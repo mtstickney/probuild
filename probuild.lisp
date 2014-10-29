@@ -288,6 +288,15 @@ Usage: doozer <operation> <system> [--output-dir output]~%~%~
          op
          system)
     (declare (special *print-status*))
+
+    ;; Add the binary's directory to PATH so progress can load the
+    ;; nanomsg dll.
+    (let ((path (sb-posix:getenv "PATH"))
+          (binary-path (cl-fad:pathname-as-file (first argv))))
+      (sb-posix:putenv (format nil "PATH=~A;~A"
+                               (uiop:native-namestring (cl-fad:pathname-directory-pathname binary-path))
+                               path)))
+
     ;; set a default output directory (will be overridden by
     ;; process-args if --output-dir was supplied)
     (set-output-dir *default-pathname-defaults*)
