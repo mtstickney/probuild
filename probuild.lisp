@@ -243,6 +243,18 @@
     (when printp
       (format t "done~%"))))
 
+(defmethod asdf:perform :around ((op dist-op) (component asdf:static-file))
+  (declare (special *print-status*))
+  (let ((printp (and (boundp '*print-status*) *print-status*))
+        (system (asdf:component-system component)))
+    (when printp
+      (format t "~&Copying ~A..." (enough-namestring (asdf:component-pathname component)
+                                                     (asdf:component-pathname system)))
+      (finish-output *standard-output*))
+    (call-next-method op component)
+    (when printp
+      (format t "done~%"))))
+
 (define-condition invalid-args (error)
   ((reason :initarg :reason :accessor reason))
   (:report (lambda (c s)
@@ -271,7 +283,7 @@
 (defun print-usage (&optional (stream *standard-output*))
   (format stream "This is doozer v~A~%~
 Usage: doozer <operation> <system> [--output-dir output]~%~%~
-~4T<operation> -- currently just 'compile'.
+~4T<operation> -- 'compile' or 'dist'.
 ~4T<system> -- the name of the system to operate on.
 ~4Toutput -- the directory to use for output files."
           app-config:*version*))
@@ -281,6 +293,8 @@ Usage: doozer <operation> <system> [--output-dir output]~%~%~
   (cond
     ((equalp op "compile")
      'asdf:compile-op)
+    ((equalp op "dist")
+     'dist-op)
     (t (error "Unknown system operation ~S." op))))
 
 (defun system-present-p (system)
