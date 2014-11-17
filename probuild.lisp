@@ -49,6 +49,9 @@
    (databases :initarg :databases :accessor databases :initform '())
    (inherit-databases :initarg :inherit-databases :accessor inherit-databases :initform t)))
 
+@eval-always
+(defclass dist-op (asdf:downward-operation) ())
+
 ;; Allow the use of bare keyword class names in system defs
 @eval-always
 (setf (find-class 'asdf::procedure-file) (find-class 'procedure-file)
@@ -72,6 +75,9 @@
   (let ((output-file (merge-pathnames (make-pathname :type "db")
                                       (asdf:component-pathname component))))
     (list output-file)))
+
+(defmethod asdf:output-files ((op dist-op) (component asdf:static-file))
+  (list (asdf:component-pathname component)))
 
 (defgeneric component-databases (op component)
   (:documentation "Return a list of database specifications in effect when OP is applied to COMPONENT."))
@@ -99,6 +105,28 @@
 
 (defmethod asdf:component-depends-on ((op asdf:compile-op) (component abl-file))
   '())
+
+(defmethod asdf:component-depends-on ((op dist-op) (component asdf:module))
+  (cons `(asdf:compile-op ,component)
+        (mapcar (lambda (c)
+                  `(dist-op ,c))
+                (asdf:component-children component))))
+
+(defmethod asdf:operation-done-p ((op dist-op) (component asdf:static-file))
+  ;; ASDF wants to do some weird BS with needed-in-image-p before it
+  ;; will even add a dist-op step to the execution plan, so make sure
+  ;; we return nil when the file's out of date to bypass that whole
+  ;; process
+  (let* ((out-file (asdf:output-file op component))
+         (in-file (asdf:component-pathname component))
+         (out-write-date (file-write-date out-file))
+         (in-write-date (file-write-date in-file)))
+    (and (probe-file (asdf:output-file op component))
+         ;; Assume it needs to be copied if we can't determine either
+         ;; write-date
+         out-write-date
+         in-write-date
+         (>= out-write-date in-write-date))))
 
 (defun changes-dbs-p (component)
   (and (typep component 'abl-module)
@@ -161,6 +189,14 @@
                                      :pro-args (component-builder-args component)))))
     ;; Remember, it returns the value
     (setf (builder db-module) builder)))
+
+(defmethod asdf:perform ((op dist-op) (component asdf:static-file))
+  (cl-fad:copy-file (asdf:component-pathname component)
+                    (asdf:output-file 'dist-op component)
+                    :overwrite t))
+
+(defmethod asdf:perform ((op dist-op) component)
+  nil)
 
 (defmethod asdf:perform ((op asdf:compile-op) (component abl-file))
   (let* ((builder-class (builder-class (asdf:component-system component)))

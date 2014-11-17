@@ -9,7 +9,8 @@
            #:class-file
            #:window-file
            #:abl-module
-           #:abl-system)
+           #:abl-system
+           #:dist-op)
 
   ;; ASDF extension protocol
   (:export #:component-databases
