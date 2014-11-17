@@ -201,7 +201,8 @@
         (system (asdf:component-system component)))
     (when printp
       (format t "~&Compiling ~A..." (enough-namestring (asdf:component-pathname component)
-                                                       (asdf:component-pathname system))))
+                                                       (asdf:component-pathname system)))
+      (finish-output *standard-output*))
     (call-next-method op component)
     (when printp
       (format t "done~%"))))
