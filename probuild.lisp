@@ -161,7 +161,7 @@
                   (and password (list "-P" (format nil "~A" password))))))))
 
 (defun output-directory ()
-  (asdf:apply-output-translations #P"."))
+  (asdf:apply-output-translations (make-pathname :directory '(:relative))))
 
 ;; Component building protocol
 (defgeneric get-builder (component builder-class)
