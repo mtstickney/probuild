@@ -82,7 +82,11 @@
    (eid :accessor server-eid :initform nil)
    (id :accessor server-id :initarg :id)
    (args :initarg :pro-args :accessor progress-args))
-  (:default-initargs :id (gensym "BUILDSERVER")
+  ;; NOTE: a random name isn't as good as e.g. mkstemp, but on windows
+  ;; you can't get a uniqueness guarantee out of GetTempFileName()
+  ;; without actually creating the file, which won't work with our
+  ;; path.
+  (:default-initargs :id (format nil "BUILDSERVER~A" (random 100))
     :pro-args '()))
 
 (defgeneric startedp (builder)
