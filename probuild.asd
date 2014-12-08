@@ -18,5 +18,6 @@
   :depends-on (#:asdf #:cl-annot #:uiop #:cl-fad #:cl-nanomsg)
   :components ((:file "package")
                (:file "nanomsg")
+               (:file "util")
                (:file "builder")
                (:file "probuild")))
