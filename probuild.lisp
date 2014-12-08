@@ -198,6 +198,20 @@
 (defmethod asdf:perform ((op dist-op) component)
   nil)
 
+(defun class-output-dir (source-base source-file output-file)
+  "Return the SAVE-INTO pathname for SOURCE-FILE rooted at SOURCE-BASE so that it's output will be OUTPUT-FILE."
+  (let* ((output-file (cl-fad:pathname-as-file output-file))
+         (source-file (cl-fad:pathname-as-file source-file))
+         (source-base (cl-fad:pathname-as-directory source-base))
+         (class-path (relative-path source-file source-base))
+         (class-dir (pathname-directory class-path))
+         (output-dir (pathname-directory output-file))
+         (class-output-dir (subseq output-dir 0 (- (length output-dir) (1- (length class-dir))))))
+    (make-pathname :directory class-output-dir
+                   :type nil
+                   :name nil
+                   :defaults output-file)))
+
 (defmethod asdf:perform ((op asdf:compile-op) (component abl-file))
   (let* ((builder-class (builder-class (asdf:component-system component)))
          (builder (get-builder component builder-class))
@@ -208,7 +222,9 @@
                 :save-into (if (typep component 'class-file)
                                ;; COMPILE does funny things with
                                ;; SAVE-INTO for classes.
-                               (output-directory)
+                               (class-output-dir *default-pathname-defaults*
+                                                 (asdf:component-pathname component)
+                                                 output-file)
                                (cl-fad:pathname-directory-pathname output-file)))))
 
 ;; After all the children have been compiled, shut down the builder if
