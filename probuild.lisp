@@ -99,9 +99,10 @@
         (append (component-databases op parent) local-dbs))))
 
 (defmethod asdf:component-depends-on ((op asdf:compile-op) (component abl-module))
-  (cons (list 'asdf:prepare-op)
-        (mapcar (lambda (c) (list 'asdf:compile-op c))
-                (asdf:component-children component))))
+  (mapcar (lambda (c) (list 'asdf:compile-op c))
+          (remove-if (lambda (c)
+                       (typep c 'asdf:static-file))
+                     (asdf:component-children component))))
 
 (defmethod asdf:component-depends-on ((op asdf:compile-op) (component abl-file))
   '())
