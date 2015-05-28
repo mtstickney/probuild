@@ -19,6 +19,10 @@
 (defclass class-file (abl-file)
   ((type :initform "cls")))
 
+@eval-always
+(defclass http-file (asdf:static-file)
+  ((uri :initarg :uri :accessor file-uri)))
+
 ;; .st files
 @eval-always
 (defclass database-file (asdf:source-file)
@@ -57,6 +61,7 @@
 (setf (find-class 'asdf::procedure-file) (find-class 'procedure-file)
       (find-class 'asdf::window-file) (find-class 'window-file)
       (find-class 'asdf::class-file) (find-class 'class-file)
+      (find-class 'asdf::http-file) (find-class 'http-file)
       (find-class 'asdf::database-file) (find-class 'database-file)
       (find-class 'asdf::abl-module) (find-class 'abl-module)
       (find-class 'asdf::abl-system) (find-class 'abl-system))
@@ -129,6 +134,12 @@
          in-write-date
          (>= out-write-date in-write-date))))
 
+;; TODO: add http timestamp header checking so we don't re-download
+;; stuff unecessarily.
+(defmethod asdf:operation-done-p ((op dist-op) (component http-file))
+  ;; Always re-download
+  nil)
+
 (defun changes-dbs-p (component)
   (and (typep component 'abl-module)
        ;; If it has a non-NIL db list or dis-inherits dbs, it changes
@@ -195,6 +206,9 @@
   (cl-fad:copy-file (asdf:component-pathname component)
                     (asdf:output-file 'dist-op component)
                     :overwrite t))
+
+(defmethod asdf:perform ((op dist-op) (component http-file))
+  (trivial-download:download (file-uri component) (asdf:output-file op component)))
 
 (defmethod asdf:perform ((op dist-op) component)
   nil)
