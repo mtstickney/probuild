@@ -7,7 +7,7 @@
 (defparameter app-config:*base-directory*
   (make-pathname :name nil :type nil :defaults *load-truename*))
 
-(defparameter app-config:*version* "0.0.6")
+(defparameter app-config:*version* "0.0.7")
 
 (asdf:defsystem #:probuild
   :serial t
