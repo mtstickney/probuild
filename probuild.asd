@@ -22,7 +22,8 @@
                #:cl-nanomsg
                #:trivial-download
                #:quri
-               #:split-sequence)
+               #:split-sequence
+               #:cl-date-time-parser)
   :components ((:file "package")
                (:file "nanomsg")
                (:file "util")

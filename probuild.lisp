@@ -24,6 +24,29 @@
             (apply #'request-with-auth args)
             (apply +original-drakma-func+ args))))
 
+(define-condition http-error (error)
+  ((url :initarg :url :accessor url)
+   (code :initarg :code :accessor code)
+   (method :initarg :method :accessor http-method)))
+
+(defun last-modified-header (url)
+  "Return the last-modified header for the resource at URL."
+  (let ((*use-auth-wrapper* t))
+    (declare (special *use-auth-wrapper*))
+    (multiple-value-bind (result code headers) (drakma:http-request url :method :head)
+      (declare (ignore result))
+      (if (/= code 200)
+          (error 'http-error :url url :code code :method :head)
+          (cdr (assoc :last-modified headers))))))
+
+(defun last-modified-time (url)
+  "Return the last-modified time of the resource at URL, or NIL if
+  there was no last-modified time set."
+  (let ((last-modified (last-modified-header url)))
+    (if last-modified
+        (cl-date-time-parser:parse-date-time last-modified)
+        nil)))
+
 (defclass abl-file (asdf:source-file)
   ())
 
@@ -154,11 +177,16 @@
          in-write-date
          (>= out-write-date in-write-date))))
 
-;; TODO: add http timestamp header checking so we don't re-download
-;; stuff unecessarily.
 (defmethod asdf:operation-done-p ((op dist-op) (component http-file))
-  ;; Always re-download
-  nil)
+  (let* ((out-file (asdf:output-file op component))
+         (output-date (file-write-date out-file))
+         (input-date (last-modified-time (file-uri component))))
+    (and (probe-file out-file)
+         ;; Assume it needs to be re-downloaded if either date
+         ;; couldn't be determined.
+         output-date
+         input-date
+         (>= output-date input-date))))
 
 (defun changes-dbs-p (component)
   (and (typep component 'abl-module)
