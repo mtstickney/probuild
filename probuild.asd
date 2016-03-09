@@ -15,7 +15,14 @@
   :author "Your Name <your.name@example.com>"
   :license "Specify license here"
   :version #.app-config:*version*
-  :depends-on (#:asdf #:cl-annot #:uiop #:cl-fad #:cl-nanomsg #:trivial-download)
+  :depends-on (#:asdf
+               #:cl-annot
+               #:uiop
+               #:cl-fad
+               #:cl-nanomsg
+               #:trivial-download
+               #:quri
+               #:split-sequence)
   :components ((:file "package")
                (:file "nanomsg")
                (:file "util")

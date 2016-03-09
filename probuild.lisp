@@ -4,6 +4,26 @@
 
 (annot:enable-annot-syntax)
 
+;; Hack in support for basic auth in urls for trivial-download.
+(defconstant +original-drakma-func+ (symbol-function 'drakma:http-request))
+
+(defun request-with-auth (uri &rest args)
+  (let* ((url (quri:uri uri))
+         (userinfo (quri:uri-userinfo (quri:uri uri)))
+         (auth-parts (if userinfo
+                         (split-sequence:split-sequence #\: userinfo)
+                         nil)))
+    (setf (quri:uri-userinfo url) nil)
+    (apply +original-drakma-func+ (quri:render-uri url) :basic-authorization auth-parts args)))
+
+(setf (symbol-function 'drakma:http-request)
+      (lambda (&rest args)
+        (declare (special *use-auth-wrapper*))
+        (if (and (boundp '*use-auth-wrapper*)
+                 *use-auth-wrapper*)
+            (apply #'request-with-auth args)
+            (apply +original-drakma-func+ args))))
+
 (defclass abl-file (asdf:source-file)
   ())
 
@@ -208,7 +228,9 @@
                     :overwrite t))
 
 (defmethod asdf:perform ((op dist-op) (component http-file))
-  (trivial-download:download (file-uri component) (asdf:output-file op component)))
+  (let ((*use-auth-wrapper* t))
+    (declare (special *use-auth-wrapper*))
+    (trivial-download:download (file-uri component) (asdf:output-file op component))))
 
 (defmethod asdf:perform ((op dist-op) component)
   nil)
