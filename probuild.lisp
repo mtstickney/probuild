@@ -147,7 +147,7 @@
          (in-file (asdf:component-pathname component))
          (out-write-date (file-write-date out-file))
          (in-write-date (file-write-date in-file)))
-    (and (probe-file (asdf:output-file op component))
+    (and (probe-file out-file)
          ;; Assume it needs to be copied if we can't determine either
          ;; write-date
          out-write-date
