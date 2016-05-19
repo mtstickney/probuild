@@ -305,11 +305,12 @@
 (defun set-output-dir (path)
   (check-type path pathname)
   (asdf:clear-output-translations)
-  (asdf:initialize-output-translations
-   `(:output-translations (,(merge-pathnames #P"**/*.*")
-                            ,(merge-pathnames (merge-pathnames #P"**/*.*" path)))
-                          :ignore-inherited-configuration
-                          :disable-cache)))
+  (let ((cwd (cl-fad:pathname-as-directory (truename *default-pathname-defaults*))))
+    (asdf:initialize-output-translations
+     `(:output-translations (,(merge-pathnames #P"**/*.*" cwd)
+                              ,(merge-pathnames (merge-pathnames #P"**/*.*" path)))
+                            :ignore-inherited-configuration
+                            :disable-cache))))
 
 ;;;; Main application stuff
 (defmethod asdf:perform :around ((op asdf:compile-op) (component abl-file))
@@ -348,7 +349,11 @@
 (defun process-argument (opt val)
   (cond
     ((equalp opt "--output-dir")
-     (set-output-dir (cl-fad:pathname-as-directory val)))
+     (let ((path (cl-fad:pathname-as-directory val)))
+       ;; We need to create it here so that we can use truename to fix
+       ;; any case discrepancies in the path.
+       (ensure-directories-exist path)
+       (set-output-dir (cl-fad:pathname-as-directory (truename path)))))
     (t (error 'invalid-option :opt opt))))
 
 (defun process-args (args)
@@ -431,7 +436,7 @@ Usage: doozer <operation> <system> [--output-dir output]~%~%~
 
     ;; set a default output directory (will be overridden by
     ;; process-args if --output-dir was supplied)
-    (set-output-dir *default-pathname-defaults*)
+    (set-output-dir (cl-fad:pathname-as-directory (truename *default-pathname-defaults*)))
     (handler-case
         (let ((args (process-args (rest argv))))
           (setf op (first args)
