@@ -413,7 +413,7 @@ Usage: doozer <operation> <system> [--output-dir output]~%~%~
          ;; (*default-pathname-defaults* (truename ".")
          (asdf:*central-registry* (cons *default-pathname-defaults* asdf:*central-registry*))
          (*print-status* t)
-         (app-config:*base-directory* (cl-fad:pathname-directory-pathname (cl-fad:pathname-as-file (first argv))))
+         (app-config:*base-directory* (cl-fad:pathname-directory-pathname (cl-fad:pathname-as-file (program-file))))
          ;; ASDF sometimes prints compilation info to
          ;; *error-output*, so swallow it
          (*error-output* (make-broadcast-stream))

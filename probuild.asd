@@ -23,9 +23,12 @@
                #:trivial-download
                #:quri
                #:split-sequence
-               #:cl-date-time-parser)
+               #:cl-date-time-parser
+               #:cffi)
   :components ((:file "package")
                (:file "nanomsg")
                (:file "util")
                (:file "builder")
+               #+(or windows mswindows win32)
+               (:file "program-file-win32")
                (:file "probuild")))
