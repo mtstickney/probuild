@@ -16,6 +16,7 @@
   :license "Specify license here"
   :version #.app-config:*version*
   :depends-on (#:asdf
+               #:closer-mop
                #:cl-annot
                #:uiop
                #:cl-fad

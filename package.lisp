@@ -10,7 +10,9 @@
            #:window-file
            #:abl-module
            #:abl-system
-           #:dist-op)
+           #:dist-op
+           #:clean-op
+           #:make-clean-op)
 
   ;; ASDF extension protocol
   (:export #:component-databases

@@ -99,6 +99,71 @@
 @eval-always
 (defclass dist-op (asdf:downward-operation) ())
 
+;; FIXME: I think the MOP stuff here is both wrong and not strictly
+;; necessary (although relatedly, I'm not sure it's legal to just
+;; create new anonymous class instances with
+;; MAKE-INSTANCE). Correctness: we're creating an instance of a
+;; metaclass, not creating a class with a particular metaclass (is
+;; there a distinction?). Need: we're not altering any class behavior,
+;; we just need dynamically-generated classes that inherit from
+;; CLEAN-OP.
+(defclass clean-op-class (standard-class)
+  ())
+
+(defmethod closer-mop:validate-superclass ((class clean-op-class) (superclass standard-class))
+  t)
+
+@eval-always
+(defclass clean-op (asdf:non-propagating-operation)
+  ((base-op :initarg :base-op :accessor base-operation)))
+
+(defgeneric clean-base-op (op)
+  (:documentation "Return the ASDF operation whose output should be cleaned when OP is performed.")
+  (:method ((op clean-op))
+    (base-operation op)))
+
+;; This is a rather dodgy hack to fix dependency issues with
+;; CLEAN-OP. ASDF de-duplicates dependencies by
+;; (CONS (TYPE-OF OP) COMPONENT)
+;; pairs -- with a normal parameterized class, two CLEAN-OP
+;; dependencies for different base ops will be de-duplicated and parts
+;; of the operation may not be performed.
+;;
+;; To work around this, we construct an anonymous operation class for
+;; each parameterized clean op, memoized by the class of the base
+;; operation parameter. That gives us one unique operation class for
+;; each base operation used, which will properly remove duplicates
+;; without affecting operations with a different parameter. Operation
+;; classes also inherit from a base CLEAN-OP class so that operation
+;; methods can be defined for all parameterized classes.
+(defparameter +clean-op-classes+ (make-hash-table :test 'equal))
+(defgeneric make-clean-op (base-op &optional base-original-initargs)
+  (:documentation "Construct an appropriate CLEAN-OP operation for the
+  base operation BASE-OP.")
+  (:method ((base-op string) &optional base-original-initargs)
+    (make-clean-op (asdf/driver:safe-read-from-string base-op :package :asdf/interface) base-original-initargs))
+  (:method ((base-op symbol) &optional base-original-initargs)
+    (if base-original-initargs
+        (make-clean-op (asdf:make-operation base-op :original-initargs base-original-initargs base-original-initargs))
+        (make-clean-op (asdf:make-operation base-op))))
+  (:method ((base-op asdf:operation) &optional base-original-initargs)
+    (declare (ignore base-original-initargs))
+    (multiple-value-bind (class foundp) (gethash (class-of base-op)
+                                                 +clean-op-classes+)
+      (unless foundp
+        (let ((op-class (make-instance 'clean-op-class
+                                       :direct-superclasses
+                                       (list (find-class 'clean-op)))))
+          (setf (gethash (class-of base-op) +clean-op-classes+) op-class
+                class op-class)))
+      (make-instance class
+                     :base-op base-op
+                     :original-initargs (list :base-op base-op)))))
+
+(defmethod print-object ((obj clean-op) stream)
+  (print-unreadable-object (obj stream :type t)
+    (format stream "base-op: ~S" (clean-base-op obj))))
+
 ;; Allow the use of bare keyword class names in system defs
 @eval-always
 (setf (find-class 'asdf::procedure-file) (find-class 'procedure-file)
@@ -126,6 +191,9 @@
 
 (defmethod asdf:output-files ((op dist-op) (component asdf:static-file))
   (list (asdf:component-pathname component)))
+
+(defmethod asdf:output-files ((op clean-op) component)
+  '())
 
 (defgeneric component-databases (op component)
   (:documentation "Return a list of database specifications in effect when OP is applied to COMPONENT."))
@@ -161,6 +229,16 @@
                   `(dist-op ,c))
                 (asdf:component-children component))))
 
+(defmethod asdf:component-depends-on ((op clean-op) component)
+  ;; The clean operation depends on cleaning the dependencies of the
+  ;; base op on COMPONENT.
+  (let ((base-op (clean-base-op op)))
+    (loop for (dep-op-spec . dep-c-specs) in (asdf:component-depends-on (clean-base-op op) component)
+       for dep-op = (asdf:find-operation base-op dep-op-spec)
+       collect  (cons (make-clean-op dep-op)
+                      (loop for dep-c-spec in dep-c-specs
+                         collect (asdf/find-component:resolve-dependency-spec component dep-c-spec))))))
+
 (defmethod asdf:operation-done-p ((op dist-op) (component asdf:static-file))
   ;; ASDF wants to do some weird BS with needed-in-image-p before it
   ;; will even add a dist-op step to the execution plan, so make sure
@@ -187,6 +265,11 @@
          output-date
          input-date
          (>= output-date input-date))))
+
+(defmethod asdf:operation-done-p ((op clean-op) component)
+  (declare (ignore component))
+  ;; We always want to perform a clean-op.
+  nil)
 
 (defun changes-dbs-p (component)
   (and (typep component 'abl-module)
@@ -263,6 +346,22 @@
 (defmethod asdf:perform ((op dist-op) component)
   nil)
 
+(defgeneric clean-component (output-op component)
+  (:documentation "Clean the output of performing OUTPUT-OP on COMPONENT.")
+  (:method (output-op component)
+    (map nil #'uiop:delete-file-if-exists (asdf:output-files output-op component))
+    ;; FIXME: This is imperfect, as ASDF is basically just ensuring
+    ;; the parent directory for every file. Should cover basic usage
+    ;; with modules, though.
+    (let ((module-path (asdf:apply-output-translations (asdf:component-pathname component))))
+      (when (and (uiop:directory-pathname-p module-path)
+                 (not (equal module-path (output-directory))))
+        (ignore-errors (uiop:delete-empty-directory module-path))))
+    (values)))
+
+(defmethod asdf:perform ((op clean-op) component)
+  (clean-component (clean-base-op op) component))
+
 (defun class-output-dir (source-base source-file output-file)
   "Return the SAVE-INTO pathname for SOURCE-FILE rooted at SOURCE-BASE so that it's output will be OUTPUT-FILE."
   (let* ((output-file (cl-fad:pathname-as-file output-file))
@@ -336,6 +435,19 @@
     (call-next-method op component)
     (when printp
       (format t "done~%"))))
+
+(defmethod asdf:perform :around ((op clean-op) component)
+  (declare (special *print-status*))
+  (let ((printp (and (boundp '*print-status*) *print-status*))
+        (system (asdf:component-system component)))
+    (when printp
+      (format t "~&Cleaning ~A..." (enough-namestring (asdf:component-pathname component)
+                                                      (asdf:component-pathname system)))
+      (finish-output))
+    (call-next-method)
+    (when printp
+      (format t "done~%")
+      (finish-output))))
 
 (define-condition invalid-args (error)
   ((reason :initarg :reason :accessor reason))
