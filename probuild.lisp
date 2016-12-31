@@ -482,7 +482,7 @@
 (defun print-usage (&optional (stream *standard-output*))
   (format stream "This is doozer v~A~%~
 Usage: doozer <operation> <system> [--output-dir output]~%~%~
-~4T<operation> -- 'compile' or 'dist'.
+~4T<operation> -- 'compile', 'dist', or 'clean'.
 ~4T<system> -- the name of the system to operate on.
 ~4Toutput -- the directory to use for output files."
           app-config:*version*))
@@ -494,6 +494,11 @@ Usage: doozer <operation> <system> [--output-dir output]~%~%~
      'asdf:compile-op)
     ((equalp op "dist")
      'dist-op)
+    ((equalp op "clean")
+     ;; We're not going to offer a separate clean-compile-op, since
+     ;; the feature is primarily useful as a "remove all the stuff
+     ;; this system built, but not my personal files".
+     (make-clean-op 'dist-op))
     (t (error "Unknown system operation ~S." op))))
 
 (defun system-present-p (system)
