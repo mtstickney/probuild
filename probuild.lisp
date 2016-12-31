@@ -431,10 +431,11 @@
     (when printp
       (format t "~&Copying ~A..." (enough-namestring (asdf:component-pathname component)
                                                      (asdf:component-pathname system)))
-      (finish-output *standard-output*))
+      (finish-output))
     (call-next-method op component)
     (when printp
-      (format t "done~%"))))
+      (format t "done~%")
+      (finish-output))))
 
 (defmethod asdf:perform :around ((op clean-op) component)
   (declare (special *print-status*))
