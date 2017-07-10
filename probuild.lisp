@@ -288,7 +288,7 @@
      finally (return c)))
 
 
-(defun db-connection-info (logical-name &rest opts &key singleuser (pathname (concatenate 'string logical-name ".db")) host port username password (alias nil aliasp))
+(defun db-connection-info (logical-name &rest opts &key singleuser readonly (pathname (concatenate 'string logical-name ".db")) host port username password (alias nil aliasp))
   (cond
     ;; Can have the :alias keyword and one argument
     ((and aliasp (third opts))
@@ -298,6 +298,7 @@
                   (list "-db" (format nil "~A" pathname))
                   (list "-ld" (format nil "~A" logical-name))
                   (and singleuser (list "-1"))
+                  (and readonly (list "-RO"))
                   (and host (list "-H" (format nil "~A" host)))
                   (and port (list "-S" (format nil "~A" port)))
                   (and username (list "-U" (format nil "~A" username)))
