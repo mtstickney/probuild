@@ -246,8 +246,8 @@
   ;; process
   (let* ((out-file (asdf:output-file op component))
          (in-file (asdf:component-pathname component))
-         (out-write-date (file-write-date out-file))
-         (in-write-date (file-write-date in-file)))
+         (out-write-date (and (probe-file out-file) (file-write-date out-file)))
+         (in-write-date (and (probe-file in-file) (file-write-date in-file))))
     (and (probe-file out-file)
          ;; Assume it needs to be copied if we can't determine either
          ;; write-date
@@ -257,7 +257,7 @@
 
 (defmethod asdf:operation-done-p ((op dist-op) (component http-file))
   (let* ((out-file (asdf:output-file op component))
-         (output-date (file-write-date out-file))
+         (output-date (and (probe-file out-file) (file-write-date out-file)))
          (input-date (last-modified-time (file-uri component))))
     (and (probe-file out-file)
          ;; Assume it needs to be re-downloaded if either date
