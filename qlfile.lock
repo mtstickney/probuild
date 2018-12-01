@@ -1,0 +1,11 @@
+("quicklisp" .
+ (:class qlot.source.ql:source-ql-all
+  :initargs (:project-name "quicklisp" :%version :latest)
+  :version "2018-10-18"))
+("cl-nanomsg" .
+ (:class qlot.source.github:source-github
+  :initargs (:project-name "cl-nanomsg" :repos "orthecreedence/cl-nanomsg" :ref nil :branch nil :tag nil)
+  :version "github-6e471c89ff40b1de5029f925215eeca8bab0f798"
+  :repos "orthecreedence/cl-nanomsg"
+  :url "https://github.com/orthecreedence/cl-nanomsg/archive/6e471c89ff40b1de5029f925215eeca8bab0f798.tar.gz"
+  :ref "6e471c89ff40b1de5029f925215eeca8bab0f798"))

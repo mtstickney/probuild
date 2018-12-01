@@ -1,0 +1,2 @@
+ql :all :latest
+github cl-nanomsg orthecreedence/cl-nanomsg
