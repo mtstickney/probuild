@@ -16,3 +16,13 @@ qlot-install-timestamp: qlfile.lock
 	     --eval '(sb-ext:quit)'
 	date > "$@"
 
+clean:
+	@echo CLEAN doozer.exe
+	@rm -f doozer.exe
+	@echo CLEAN qlot-manifest.txt
+	@rm -f qlot-manifest.txt
+	@echo CLEAN quicklisp/
+	@rm -rf quicklisp/
+	@rm -f qlot-install-timestamp
+
+.PHONY: clean
