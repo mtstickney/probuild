@@ -12,13 +12,7 @@ qlot-install-timestamp: qlfile.lock
 	sbcl --disable-debugger \
 	     --eval '(ql:quickload :qlot)' \
 	     --eval '(push *default-pathname-defaults* asdf:*central-registry*)' \
-	     --eval '(qlot:quickload :probuild)' \
+	     --eval '(qlot:install :probuild)' \
 	     --eval '(sb-ext:quit)'
 	date > "$@"
 
-qlfile.lock: qlfile
-	sbcl --disable-debugger \
-	     --eval '(ql:quickload :qlot)' \
-	     --eval '(push *default-pathname-defaults* asdf:*central-registry*)' \
-	     --eval '(qlot:install :probuild)' \
-	     --eval '(sb-ext:quit)'
